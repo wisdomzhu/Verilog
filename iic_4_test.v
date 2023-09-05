@@ -1,4 +1,24 @@
 `timescale 1ns / 1ps
+//////////////////////////////////////////////////////////////////////////////////
+// Company: 
+// Engineer: 
+// 
+// Create Date: 2023/09/05 17:22:11
+// Design Name: 
+// Module Name: model
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: flag_i拉高一次，iic运行一次，运行结束输出高电平
+// 
+// Dependencies: 
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
+//////////////////////////////////////////////////////////////////////////////////
+
 module iic_master(
   input clk_i,//150MHz
   input reset_i,//高电平同步复位  
@@ -23,7 +43,7 @@ reg [11:0] cnt_clk;						//clk计数器
 reg [3:0] cnt_scl;						//scl计数器，表示传送数据的位数
 reg sda_tri;							//三态控制信号,0:输出；1：输入
 reg sda_o;								//sda总线输出数据的寄存器
-//wire sda_i;                             //sda总线输入数据   
+//wire sda_i;                           //sda总线输入数据   
 reg scl_o;								//scl时钟总线
 reg [4:0] current_state;				//当前状态
 reg [4:0] next_state;					//下个状态
@@ -76,7 +96,7 @@ localparam W_ACK1=5'd4;
 localparam W_REG_ADDR=5'd5;
 localparam W_ACK2=5'd6;
 localparam W_DATA=5'd7;
-localparam W_ACK3=4'd8;
+localparam W_ACK3=5'd8;
 localparam STOP=5'd9;
 localparam FINISH=5'd20;
 localparam R_START2=5'd10;
@@ -168,7 +188,7 @@ end
 //状态机2第一段
 always@(posedge clk_i)
 begin 
-	if(reset_i==1)
+	if(reset_i)
 		current_state <= IDLE;
 	else
 		current_state <= next_state;
@@ -180,83 +200,83 @@ begin
 	case(current_state)
 		IDLE:
 			begin
-				if(flag_i==1)
-                    next_state <= W_START;
+				if(flag_i)
+                    next_state = W_START;
 				else
-					next_state <= current_state;
+					next_state = current_state;
 			end
 		W_START:
 			begin
 				if(cnt_clk == 12'b0)
-					next_state <= W_SLV_ADDR;
+					next_state = W_SLV_ADDR;
 				else
-					next_state <= current_state;
+					next_state = current_state;
 			end
 		W_SLV_ADDR:
 			begin
 				if((cnt_clk == 12'b0) && (cnt_scl == 4'b0111))
-					next_state <= W_WR;
+					next_state = W_WR;
 				else
-					next_state <= current_state;
+					next_state = current_state;
 			end   
 		W_WR:
 			begin
 				if(cnt_clk == 12'b0)
-					next_state <= W_ACK1;
+					next_state = W_ACK1;
 				else
-					next_state <= current_state;
+					next_state = current_state;
 			end                     
 		W_ACK1:
 			begin
 				if(cnt_clk == 12'b0)
-					next_state <= W_REG_ADDR;
+					next_state = W_REG_ADDR;
 				else
-					next_state <= current_state;
+					next_state = current_state;
 			end 
 		W_REG_ADDR:
 			begin
 				if((cnt_clk == 12'b0) && (cnt_scl == 4'b1000))
-					next_state <= W_ACK2;
+					next_state = W_ACK2;
 				else
-					next_state <= current_state;
+					next_state = current_state;
 			end
 		W_ACK2:
 			begin
 				if((cnt_clk == 12'b0)&&(wr_i==0))
-					next_state <= W_DATA;
+					next_state = W_DATA;
 				else if ((cnt_clk == 12'b0)&&(wr_i==1))
-				    next_state <= R_START2;
+				    next_state = R_START2;
                      else
-                	next_state <= current_state;
+                	next_state = current_state;
 			end   
 		W_DATA:
 			begin
 				if((cnt_clk == 12'b0) && (cnt_scl == 4'b1000))
-					next_state <= W_ACK3;
+					next_state = W_ACK3;
 				else
-					next_state <= current_state;
+					next_state = current_state;
 			end
 		W_ACK3:
 			begin
 				if(cnt_clk == 12'b0)
-					next_state <= STOP;
+					next_state = STOP;
 				else
-					next_state <= current_state;
+					next_state = current_state;
 			end 
 		STOP:
 			begin
-				if((cnt_clk == 12'b0)&&(busy==1))
-					next_state <= IDLE;
+				if((cnt_clk == 12'b0)&&(busy==1'b1))
+					next_state = IDLE;
 				else begin
-				  if((cnt_clk == 12'b0)&&(busy==0))
-					next_state <= FINISH;
+				  if((cnt_clk == 12'b0)&&(busy==1'b0))
+					next_state = FINISH;
 					else
-					next_state <= current_state;
+					next_state = current_state;
 				end
 			end
 		FINISH:
 		    begin
-				next_state<=current_state;
+				next_state = current_state;
 			end	
     /*        
 		R_START2:
@@ -309,14 +329,14 @@ end
 //状态机2第三段
 always@(posedge clk_i)
 begin
-	if(reset_i==1)
+	if(reset_i)
 		begin
 			sda_tri 	<= 1'b0;
 			scl_o 		<= 1'b1;
 			sda_o 		<= 1'b1;
 			cnt_clk 	<= 12'b0;
 			cnt_scl 	<= 4'b0;
-            ready_r     <= 0;
+            ready_r     <= 1'b0;
             //IIC_Read_Data_o <= 8'b0;
 		end
 	else 
@@ -329,7 +349,7 @@ begin
 						sda_o 		<= 1'b1;
 						cnt_clk 	<= 12'b0;
 						cnt_scl 	<= 4'b0;
-                        ready_r     <= 0;
+                        ready_r     <= 1'b0;
                         //IIC_Read_Data_o <= 8'b0;                        
 					end   
 				W_START:

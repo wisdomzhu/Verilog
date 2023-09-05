@@ -14,7 +14,7 @@ wire scl;
 wire sda;
 wire ready_o;
 
-//时钟激励
+//时钟激励50MHz
 initial clk_i=0;
 always #10 clk_i=~clk_i;
 
@@ -39,12 +39,12 @@ initial begin
     flag_i=0;
     #20;
     flag_i=1;
-    #40;
+    #20;
     flag_i=0;
 end
 iic_master uut(
     .clk_i(clk_i),
-
+    .flag_i(flag_i),
     .Slv_Addr_i(Slv_Addr_i),
     .Reg_Addr_i(Reg_Addr_i),
     .Data_i(Data_i),
